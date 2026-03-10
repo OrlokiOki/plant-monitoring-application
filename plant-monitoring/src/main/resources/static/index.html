@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Science+Gothic:wght@100..900&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plant Monitoring Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        font-family: 'Science Gothic', sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+    }
+    .plants-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 25px;
+    }
+    .plant-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+        border: 1px solid #e0e0e0;
+    }
+    .plant-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .plant-name {
+        font-size: 1.8em;
+        color: #333;
+        font-weight: bold;
+    }
+    .auto-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .auto-toggle label {
+        font-weight: 600;
+        color: #666;
+        white-space: nowrap;
+    }
+    .toggle-switch {
+        position: relative;
+        width: 60px;
+        height: 30px;
+        flex-shrink: 0;
+    }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 30px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #999;
+    }
+    input:checked + .slider:before {
+        transform: translateX(30px);
+    }
+    .sensor-data {
+        margin-bottom: 25px;
+    }
+    .sensor-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #fafafa;
+        border-radius: 8px;
+        border-left: 4px solid #ddd;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .sensor-label {
+        font-weight: 600;
+        color: #555;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 140px;
+    }
+    .sensor-value-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+    }
+    .sensor-value {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+    }
+    .optimal {
+        font-size: 0.85em;
+        color: #888;
+    }
+    .target-indicator {
+        font-size: 0.9em;
+        color: #ff6b6b;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    .control-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .control-header {
+        font-weight: 600;
+        color: #555;
+        font-size: 1.05em;
+    }
+    .control-input-group {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+    }
+    .target-input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 1em;
+        font-family: 'Science Gothic', sans-serif;
+        min-width: 0;
+    }
+    .target-input:focus {
+        outline: none;
+        border-color: #999;
+    }
+    .target-input::placeholder {
+        color: #aaa;
+    }
+    button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95em;
+        font-family: 'Science Gothic', sans-serif;
+        background: #e8e8e8;
+        color: #333;
+        border: 1px solid #ccc;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    button:hover {
+        background: #d5d5d5;
+        transform: scale(1.05);
+    }
+    button:active {
+        transform: scale(0.98);
+    }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+    .status-auto {
+        background: #e8e8e8;
+        color: #333;
+        border: 1px solid #ccc;
+    }
+    .status-manual {
+        background: #f5f5f5;
+        color: #333;
+        border: 1px solid #ccc;
+    }
+    .loading {
+        text-align: center;
+        color: #333;
+        font-size: 1.5em;
+        padding: 50px;
+    }
+    .manual-controls-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-top: 40px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
+    }
+    .chart-container h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.8em;
+    }
+    #moistureChart {
+        max-height: 400px;
+    }
+    @media (max-width: 768px) {
+        .plants-grid {
+            grid-template-columns: 1fr;
+        }
+        .plant-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .auto-toggle {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Plant Monitoring Dashboard</h1>
+  <div id="plantsContainer" class="plants-grid">
+    <div class="loading">Loading plants...</div>
+  </div>
+
+  <div class="chart-container">
+    <h2>Soil Moisture - Past Hour</h2>
+    <canvas id="moistureChart"></canvas>
+  </div>
+</div>
+
+<script>
+  const CONTROL_API = 'http://localhost:8080/api/control';
+  const DATA_API = 'http://localhost:8080/api/data';
+
+  const PLANT_COLORS = [
+      '#FF6384',
+      '#36A2EB',
+      '#FFCE56',
+      '#4BC0C0',
+      '#9966FF',
+      '#FF9F40',
+      '#FF6384',
+      '#C9CBCF',
+      '#4BC0C0',
+      '#FF9F40'
+  ];
+
+  let savedInputValues = {};
+  let moistureChart = null;
+
+
+  async function loadPlants() {
+      try {
+          const response = await fetch(CONTROL_API + '/plants');
+          const plants = await response.json();
+          const sortedPlants = sortPlantsById(plants);
+          displayPlants(sortedPlants);
+      } catch (error) {
+          console.error('Error loading plants:', error);
+          document.getElementById('plantsContainer').innerHTML =
+              '<div class="loading">Error loading plants.</div>';
+      }
+  }
+
+  function sortPlantsById(plants) {
+      const plantsCopy = [];
+      for (let i = 0; i < plants.length; i++) {
+          plantsCopy.push(plants[i]);
+      }
+      plantsCopy.sort(function(plantA, plantB) {
+          return plantA.id - plantB.id;
+      });
+      return plantsCopy;
+  }
+
+  function displayPlants(plants) {
+      const container = document.getElementById('plantsContainer');
+
+      if (plants.length === 0) {
+          container.innerHTML = '<div class="loading">No plants found.</div>';
+          return;
+      }
+
+      saveAllInputValues();
+
+      let html = '';
+      for (let i = 0; i < plants.length; i++) {
+          html = html + buildPlantCardHTML(plants[i]);
+      }
+      container.innerHTML = html;
+
+      restoreAllInputValues();
+  }
+
+  function saveAllInputValues() {
+      const inputs = document.querySelectorAll('.target-input');
+      for (let i = 0; i < inputs.length; i++) {
+          const input = inputs[i];
+          if (input.value !== '') {
+              savedInputValues[input.id] = input.value;
+          }
+      }
+  }
+
+  function restoreAllInputValues() {
+      const inputIds = Object.keys(savedInputValues);
+      for (let i = 0; i < inputIds.length; i++) {
+          const id = inputIds[i];
+          const input = document.getElementById(id);
+          if (input !== null) {
+              input.value = savedInputValues[id];
+          }
+      }
+  }
+
+  function formatSensorValue(value, suffix) {
+      if (value === null || value === undefined) {
+          return 'N/A';
+      }
+      return value.toFixed(1) + (suffix || '');
+  }
+
+  function buildTargetHTML(targetValue, suffix) {
+      if (!targetValue) {
+          return '';
+      }
+      return '<span class="target-indicator">Target: ' + targetValue.toFixed(1) + (suffix || '') + '</span>';
+  }
+
+  function buildPlantCardHTML(plant) {
+      const isManualMode = !plant.autoMode;
+      const controlsDisabledClass = isManualMode ? '' : 'manual-controls-disabled';
+      const disabledAttribute = isManualMode ? '' : 'disabled';
+      const checkedAttribute = plant.autoMode ? 'checked' : '';
+      const badgeClass = plant.autoMode ? 'status-auto' : 'status-manual';
+      const badgeText = plant.autoMode ? 'AUTO' : 'MANUAL';
+
+      const temperatureDisplay = formatSensorValue(plant.currentTemperature, '°C');
+      const moistureDisplay = formatSensorValue(plant.currentSoilMoisture, '');
+      const lightDisplay = formatSensorValue(plant.currentLight, '');
+      const moistureRangeText = plant.optimalMoistureMin + ' - ' + plant.optimalMoistureMax;
+
+      const tempTargetHTML = buildTargetHTML(plant.targetTemperature, '°C');
+      const moistureTargetHTML = buildTargetHTML(plant.targetMoisture, '');
+      const lightTargetHTML = buildTargetHTML(plant.targetLight, '');
+
+      const currentMoisture = plant.currentSoilMoisture || 0;
+      const savedTemp = savedInputValues['temp-' + plant.id] || '';
+      const savedLight = savedInputValues['light-' + plant.id] || '';
+      const savedMoisture = savedInputValues['moisture-' + plant.id] || '';
+
+      return `
+          <div class="plant-card" data-plant-id="${plant.id}">
+              <div class="plant-header">
+                  <div>
+                      <span class="plant-name">${plant.name}</span>
+                      <span class="status-badge ${badgeClass}">${badgeText}</span>
+                  </div>
+                  <div class="auto-toggle">
+                      <label>Auto Mode</label>
+                      <label class="toggle-switch">
+                          <input type="checkbox"
+                              ${checkedAttribute}
+                              onchange="toggleAutoMode(${plant.id}, this.checked)">
+                          <span class="slider"></span>
+                      </label>
+                  </div>
+              </div>
+
+              <div class="sensor-data">
+                  <div class="sensor-row">
+                      <span class="sensor-label">Temperature</span>
+                      <div class="sensor-value-container">
+                          <span class="sensor-value">${temperatureDisplay}</span>
+                          <span class="optimal">Optimal: ${plant.optimalTemperature}°C</span>
+                          ${tempTargetHTML}
+                      </div>
+                  </div>
+                  <div class="sensor-row">
+                      <span class="sensor-label">Soil Moisture</span>
+                      <div class="sensor-value-container">
+                          <span class="sensor-value">${moistureDisplay}</span>
+                          <span class="optimal">Optimal: ${moistureRangeText}</span>
+                          ${moistureTargetHTML}
+                      </div>
+                  </div>
+                  <div class="sensor-row">
+                      <span class="sensor-label">Light Level</span>
+                      <div class="sensor-value-container">
+                          <span class="sensor-value">${lightDisplay}</span>
+                          <span class="optimal">Optimal: ${plant.optimalLight}</span>
+                          ${lightTargetHTML}
+                      </div>
+                  </div>
+              </div>
+
+              <div class="controls ${controlsDisabledClass}">
+                  <div class="control-row">
+                      <span class="control-header">Set Target Temperature</span>
+                      <div class="control-input-group">
+                          <input type="number" class="target-input" id="temp-${plant.id}"
+                              step="0.5" value="${savedTemp}"
+                              oninput="saveInputValue('temp-${plant.id}', this.value)"
+                              ${disabledAttribute}>
+                          <button onclick="setTargetTemperature(${plant.id})" ${disabledAttribute}>
+                              Set Target
+                          </button>
+                      </div>
+                  </div>
+                  <div class="control-row">
+                      <span class="control-header">Set Target Light</span>
+                      <div class="control-input-group">
+                          <input type="number" class="target-input" id="light-${plant.id}"
+                              step="1" value="${savedLight}"
+                              oninput="saveInputValue('light-${plant.id}', this.value)"
+                              ${disabledAttribute}>
+                          <button onclick="setTargetLight(${plant.id})" ${disabledAttribute}>
+                              Set Target
+                          </button>
+                      </div>
+                  </div>
+                  <div class="control-row">
+                      <span class="control-header">Set Target Moisture (Water Only)</span>
+                      <div class="control-input-group">
+                          <input type="number" class="target-input" id="moisture-${plant.id}"
+                              step="1" min="${currentMoisture}" value="${savedMoisture}"
+                              oninput="saveInputValue('moisture-${plant.id}', this.value)"
+                              ${disabledAttribute}>
+                          <button onclick="setTargetMoisture(${plant.id})" ${disabledAttribute}>
+                              Water Plant
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      `;
+  }
+
+  function saveInputValue(inputId, value) {
+      savedInputValues[inputId] = value;
+  }
+
+  function clearSavedInputsForPlant(plantId) {
+      delete savedInputValues['temp-' + plantId];
+      delete savedInputValues['light-' + plantId];
+      delete savedInputValues['moisture-' + plantId];
+  }
+
+  function reloadPlantsAfterDelay() {
+      setTimeout(function() {
+          loadPlants();
+      }, 500);
+  }
+
+  async function toggleAutoMode(plantId, enable) {
+      try {
+          const url = CONTROL_API + '/auto/' + plantId + '?enable=' + enable;
+          await fetch(url, { method: 'POST' });
+          clearSavedInputsForPlant(plantId);
+          reloadPlantsAfterDelay();
+      } catch (error) {
+          console.error('Error toggling auto mode:', error);
+          alert('Failed to toggle auto mode');
+      }
+  }
+
+  async function setTargetTemperature(plantId) {
+      const input = document.getElementById('temp-' + plantId);
+      const target = parseFloat(input.value);
+
+      if (isNaN(target)) {
+          alert('Please enter a valid temperature value');
+          return;
+      }
+
+      try {
+          const url = CONTROL_API + '/temperature/' + plantId + '/target?target=' + target;
+          await fetch(url, { method: 'POST' });
+          input.value = '';
+          delete savedInputValues['temp-' + plantId];
+          reloadPlantsAfterDelay();
+      } catch (error) {
+          console.error('Error setting target temperature:', error);
+          alert('Failed to set target temperature');
+      }
+  }
+
+  async function setTargetLight(plantId) {
+      const input = document.getElementById('light-' + plantId);
+      const target = parseFloat(input.value);
+
+      if (isNaN(target)) {
+          alert('Please enter a valid light level');
+          return;
+      }
+
+      try {
+          const url = CONTROL_API + '/light/' + plantId + '/target?target=' + target;
+          await fetch(url, { method: 'POST' });
+          input.value = '';
+          delete savedInputValues['light-' + plantId];
+          reloadPlantsAfterDelay();
+      } catch (error) {
+          console.error('Error setting target light:', error);
+          alert('Failed to set target light');
+      }
+  }
+
+  async function setTargetMoisture(plantId) {
+      const input = document.getElementById('moisture-' + plantId);
+      const target = parseFloat(input.value);
+
+      if (isNaN(target)) {
+          alert('Please enter a valid moisture level');
+          return;
+      }
+
+      const currentMoisture = getCurrentMoistureForPlant(plantId);
+      if (target <= currentMoisture) {
+          alert('Target moisture must be higher than current moisture (' +
+              currentMoisture.toFixed(1) +
+              '%). You can only water plants, not decrease moisture.');
+          return;
+      }
+
+      try {
+          const url = CONTROL_API + '/water/' + plantId + '/target?target=' + target;
+          await fetch(url, { method: 'POST' });
+          input.value = '';
+          delete savedInputValues['moisture-' + plantId];
+          reloadPlantsAfterDelay();
+      } catch (error) {
+          console.error('Error setting target moisture:', error);
+          alert('Failed to set target moisture');
+      }
+  }
+
+  function getCurrentMoistureForPlant(plantId) {
+      const plantCard = document.querySelector('[data-plant-id="' + plantId + '"]');
+      const moistureValueElement = plantCard.querySelector('.sensor-row:nth-child(2) .sensor-value');
+      return parseFloat(moistureValueElement.textContent);
+  }
+
+
+  function initializeMoistureChart() {
+      const ctx = document.getElementById('moistureChart').getContext('2d');
+      moistureChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: [],
+              datasets: []
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              interaction: {
+                  mode: 'nearest',
+                  axis: 'x',
+                  intersect: false
+              },
+              plugins: {
+                  legend: {
+                      display: true,
+                      position: 'top',
+                      labels: {
+                          font: { family: 'Science Gothic', size: 12 },
+                          usePointStyle: true,
+                          padding: 15
+                      }
+                  },
+                  tooltip: {
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      titleFont: { family: 'Science Gothic', size: 14 },
+                      bodyFont: { family: 'Science Gothic', size: 13 },
+                      padding: 12,
+                      displayColors: true,
+                      callbacks: {
+                          label: function(context) {
+                              return context.dataset.label + ': ' + context.parsed.y.toFixed(1);
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  x: {
+                      display: true,
+                      title: {
+                          display: true,
+                          text: 'Time',
+                          font: { family: 'Science Gothic', size: 14 }
+                      },
+                      ticks: {
+                          font: { family: 'Science Gothic' },
+                          maxRotation: 45,
+                          minRotation: 45
+                      }
+                  },
+                  y: {
+                      display: true,
+                      title: {
+                          display: true,
+                          text: 'Soil Moisture (Raw Value)',
+                          font: { family: 'Science Gothic', size: 14 }
+                      },
+                      ticks: { font: { family: 'Science Gothic' } },
+                      min: 0,
+                      max: 400
+                  }
+              }
+          }
+      });
+  }
+
+  function filterDataFromPastHour(allData) {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const recentData = [];
+      for (let i = 0; i < allData.length; i++) {
+          const entry = allData[i];
+          const entryTime = new Date(entry.timeStamp);
+          if (entryTime >= oneHourAgo) {
+              recentData.push(entry);
+          }
+      }
+      return recentData;
+  }
+
+  function groupDataByPlant(dataEntries) {
+      const plantDataMap = {};
+      for (let i = 0; i < dataEntries.length; i++) {
+          const entry = dataEntries[i];
+          const plantId = entry.plantId;
+          if (!plantDataMap[plantId]) {
+              plantDataMap[plantId] = [];
+          }
+          plantDataMap[plantId].push({
+              time: new Date(entry.timeStamp),
+              moisture: entry.soilMoisture
+          });
+      }
+      return plantDataMap;
+  }
+
+  function sortEachPlantDataByTime(plantDataMap) {
+      const plantIds = Object.keys(plantDataMap);
+      for (let i = 0; i < plantIds.length; i++) {
+          const plantId = plantIds[i];
+          plantDataMap[plantId].sort(function(a, b) {
+              return a.time - b.time;
+          });
+      }
+  }
+
+  function buildChartDatasets(plantDataMap) {
+      const plantIds = Object.keys(plantDataMap);
+      const datasets = [];
+      for (let i = 0; i < plantIds.length; i++) {
+          const plantId = plantIds[i];
+          const plantData = plantDataMap[plantId];
+          const colorIndex = parseInt(plantId) - 1;
+          const color = PLANT_COLORS[colorIndex % PLANT_COLORS.length];
+
+          const dataPoints = [];
+          for (let j = 0; j < plantData.length; j++) {
+              dataPoints.push({
+                  x: formatTime(plantData[j].time),
+                  y: plantData[j].moisture
+              });
+          }
+
+          datasets.push({
+              label: 'Plant ' + plantId,
+              data: dataPoints,
+              borderColor: color,
+              backgroundColor: color,
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6
+          });
+      }
+      return datasets;
+  }
+
+  function collectAllTimeLabels(plantDataMap) {
+      const plantIds = Object.keys(plantDataMap);
+      const allTimes = [];
+      for (let i = 0; i < plantIds.length; i++) {
+          const plantData = plantDataMap[plantIds[i]];
+          for (let j = 0; j < plantData.length; j++) {
+              const timeStr = formatTime(plantData[j].time);
+              if (allTimes.indexOf(timeStr) === -1) {
+                  allTimes.push(timeStr);
+              }
+          }
+      }
+      allTimes.sort();
+      return allTimes;
+  }
+
+  async function updateMoistureChart() {
+      try {
+          const response = await fetch(DATA_API);
+          const allData = await response.json();
+
+          const recentData = filterDataFromPastHour(allData);
+          const plantDataMap = groupDataByPlant(recentData);
+          sortEachPlantDataByTime(plantDataMap);
+
+          const datasets = buildChartDatasets(plantDataMap);
+          const timeLabels = collectAllTimeLabels(plantDataMap);
+
+          moistureChart.data.labels = timeLabels;
+          moistureChart.data.datasets = datasets;
+          moistureChart.update();
+      } catch (error) {
+          console.error('Error updating moisture chart:', error);
+      }
+  }
+
+  function formatTime(date) {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return hours + ':' + minutes;
+  }
+
+
+  loadPlants();
+  setInterval(function() { loadPlants(); }, 3000);
+
+  initializeMoistureChart();
+  updateMoistureChart();
+  setInterval(function() { updateMoistureChart(); }, 30000);
+</script>
+</body>
+</html>
